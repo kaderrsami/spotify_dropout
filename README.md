@@ -5,7 +5,7 @@ Hello! This repository contains the solutions for the **Dplyr and Tidyr Lab** as
 ## 📂 Structure
 
 - **R Project File**: This repository includes an R project file that encapsulates the entire project.
-- **Data Files**: The datasets used for this assignment can be found in either `.csv` or `.rds` format.
+- **Data Files**: The datasets used for this assignment can be found in `.rds` format.
 - **Quarto Document**: A detailed Quarto document is available with all the answers. Each exercise is separated using a second-level section, and individual questions within exercises have third-level sections.
 - **HTML Rendering**: The Quarto document is also rendered to HTML for easy viewing.
 
