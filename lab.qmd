@@ -1,0 +1,350 @@
+---
+title: "Assignment on analysis of the spotify top list and the dropout datasets"
+format: 
+  html: default
+  pdf: default
+echo: false
+---
+
+# GitHub URL
+
+This is my public GitHub URL: <https://github.com/kaderrsami/spotify_dropout>
+
+# Exercise 1
+
+```{r setup, include=FALSE}
+here::i_am("dplyr lab.Rproj")
+library(here)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+theme_set(theme_bw())
+```
+
+## Question 1
+
+We are reading in the Spotify dataset and then identifying the number of unique songs, artists, and genres.
+
+```{r}
+spotify <- readRDS(here("top-spotify-hits-2000-2019.Rds"))
+```
+
+```{r}
+unique_songs <- spotify |> 
+  distinct(song, artist, .keep_all = TRUE) |> 
+  nrow()
+
+unique_artists <- spotify |> 
+  distinct(artist) |>
+  nrow()
+
+unique_genres <- spotify |> 
+  distinct(genre) |>
+  nrow()
+```
+
+The data set contains `r unique_songs` unique songs, `r unique_artists` unique artists, and `r unique_genres` unique genres. This gives us a broad view of the data's diversity.
+
+## Question 2
+
+Here, we are grouping the Spotify dataset by year and finding the number of distinct artists for each year.
+
+```{r}
+distinct_artists_per_year <- spotify |>
+  group_by(year) |>
+  distinct(artist) |>
+  summarize(num_distinct_artists = n()) |>
+  rename(Year = year, "Number of Distinct Artists" = num_distinct_artists)
+```
+
+```{r, results='asis'}
+knitr::kable(distinct_artists_per_year, caption = "Number of Distinct Artists Per Year")
+```
+
+This table shows the number of distinct artists contributing to the music landscape each year. Trends in these numbers can potentially inform us about the industry's evolution.
+
+## Question 3
+
+We are identifying the most popular artist in the dataset based on the number of unique songs.
+
+```{r}
+most_popular_artist <- spotify |>
+  distinct(song, artist) |>
+  group_by(artist) |>
+  summarize(num_songs = n()) |>
+  arrange(desc(num_songs)) |>
+  slice_head(n = 1)
+
+artist_name <- most_popular_artist |>
+  pull(artist)
+
+num_songs <- most_popular_artist |>
+  pull(num_songs)
+```
+
+The most popular artist in the data set is `r artist_name` with `r num_songs` unique songs, indicating a significant contribution to the musical landscape.
+
+## Question 4
+
+This question aims to calculate various statistics related to the 'tempo' of songs, grouped by genre.
+
+```{r}
+genre_stats <- spotify |>
+  distinct(song, artist, .keep_all = TRUE) |>
+  group_by(genre) |>
+  summarize(
+            min_tempo = min(tempo, na.rm = TRUE),
+            max_tempo = max(tempo, na.rm = TRUE),
+            mean_tempo = mean(tempo, na.rm = TRUE),
+            median_tempo = median(tempo, na.rm = TRUE),
+            num_songs = n()) |>
+  rename(Genre = genre, 
+         "Minimum Tempo" = min_tempo, 
+         "Maximum Tempo" = max_tempo, 
+         "Average Tempo" = mean_tempo, 
+         "Median Tempo" = median_tempo, 
+         "Number of Songs" = num_songs)
+```
+
+```{r, results='asis'}
+kable(genre_stats, caption = "Statistics by Musical Genre")
+```
+
+This table provides insights into the tempo characteristics of different genres. This can be useful for research related to musical patterns.
+
+## Question 5
+
+Here, we are calculating the yearly mean for 'liveness' and 'danceability' in the songs.
+
+```{r}
+mean_liveness_danceability_per_year <- spotify |>
+  group_by(year) |>
+  summarize(
+            mean_liveness = mean(liveness, na.rm = TRUE),
+            mean_danceability = mean(danceability, na.rm = TRUE)) |>
+  rename(Year = year, 
+         "Mean Liveness" = mean_liveness, 
+         "Mean Danceability" = mean_danceability)
+```
+
+```{r, results='asis'}
+kable(mean_liveness_danceability_per_year, caption = "Mean Liveness and Danceability Per Year")
+```
+
+This table reveals the average liveness and danceability of songs year by year, which might help in analyzing trends in music preferences.
+
+## Question 6
+
+We visualize the yearly mean values of 'liveness' and 'danceability' to understand their temporal evolution.
+
+```{r first}
+mean_yearly_values <- spotify |>
+  group_by(year) |>
+  summarize(
+            mean_liveness = mean(liveness, na.rm = TRUE),
+            mean_danceability = mean(danceability, na.rm = TRUE)) |>
+  pivot_longer(
+              cols = c(mean_liveness, mean_danceability),
+              names_to = "faceted_var",
+              values_to = "mean_value")
+
+ggplot(mean_yearly_values, aes(x = year, y = mean_value, color = faceted_var)) +
+  geom_line(size = 1) +
+  geom_smooth(method = "lm", aes(linetype = paste(faceted_var, "Trend")), se = FALSE, alpha = 0.7) +
+  scale_color_manual(values = c("mean_liveness" = "blue", "mean_danceability" = "green")) +
+  scale_linetype_manual(values = c("mean_liveness Trend" = "dotted", "mean_danceability Trend" = "dotted")) +
+  labs(
+    title = "Temporal Evolution of Mean Annual Liveness and Danceability",
+    x = "Year",
+    y = "Mean Value",
+    color = NULL,
+    linetype = NULL) +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ faceted_var, scales = 'free_y')
+```
+
+```{r}
+rmean_liveness <- spotify |>
+  group_by(year) |>
+  summarize(
+            mean_liveness = mean(liveness, na.rm = TRUE))
+rmean_danceability <- spotify |>
+  group_by(year) |>
+  summarize(
+             mean_danceability = mean(danceability, na.rm = TRUE))
+
+latest_year_liveness <- rmean_liveness |> 
+  summarise(latest_year = max(year)) |> 
+  pull(latest_year)
+
+latest_mean_liveness <- rmean_liveness |> 
+  filter(year == latest_year_liveness) |> 
+  pull(mean_liveness)
+
+latest_year_danceability <- rmean_danceability |> 
+  summarise(latest_year = max(year)) |> 
+  pull(latest_year)
+
+latest_mean_danceability <- rmean_danceability |> 
+  filter(year == latest_year_danceability) |>
+  pull(mean_danceability)
+```
+
+### Temporal Evolution of Mean Annual Liveness and Danceability
+
+From the graph, the following conclusions and observations can be made:
+
+#### Overall Trend:
+
+Mean danceability has remained relatively consistent over the 20-year period, hovering around `r round(latest_mean_danceability, 2)`. There are minor fluctuations, but no significant upward or downward trend is observed. This suggests that the danceability of songs has remained relatively stable over the years. Mean liveness has shown more variability over the years. The value was mostly stable from 2000 to around 2014 but has seen a sharp increase from 2015 onwards, peaking around 2020, with a mean of `r round(latest_mean_liveness, 2)`.
+
+#### Year 2015 Onwards:
+
+There's a noticeable uptick in the mean liveness value from 2015 onwards. This sudden rise could be indicative of a change in the music industry, where more live or live-feeling recordings made it to the top hits on Spotify. Another interpretation could be that the method of measuring 'liveness' changed or the way music was produced shifted.
+
+#### Comparative Analysis:
+
+For the majority of the years, the danceability of songs has been considerably higher than their liveness. This could suggest that, historically, top hits on Spotify have been more geared towards tracks that are catchy and easy to dance to rather than tracks that have a live performance feel. However, as we approach 2020, the gap between danceability and liveness starts to narrow, indicating a shift in preference or production towards songs with a more live-feeling.
+
+# Exercise 2
+
+```{r}
+dropout <- readRDS(here("dropout.Rds"))
+```
+
+## Question 1
+
+We are grouping the dropout dataset by 'Target' and 'Marital Status' and finding the median 'Admission Grade' for these groups.
+
+```{r}
+median_admission_grade <- dropout |>
+  group_by(Target, `Marital status`) |>
+  summarize(median_admission = median(`Admission grade`)) |> 
+  rename("Median Admission" = median_admission) 
+conditional_median <- dropout |> 
+  group_by(Gender) |> 
+  summarize(across(starts_with("Curricular units"), ~median(., na.rm = TRUE)))
+```
+
+```{r, results='asis'}
+kable(median_admission_grade, caption = "Median Admission Grade by Target and Marital Status")
+```
+
+This table allows us to examine how median admission grades vary between different target and marital status groups.
+
+## Question 2
+
+We are transforming the data to compare the 'Median Admission Grade' across marital statuses for each target group.
+
+```{r}
+trans_median_grade <- median_admission_grade |>
+  pivot_wider(names_from = Target, values_from = `Median Admission`)
+```
+
+```{r, results='asis'}
+kable(trans_median_grade, caption = "Median Admission Grade by Marital Status and Target")
+```
+
+Among the dropouts, widowers have the highest median admission grade at 129.40, followed closely by those who are divorced and married. Singles have a median grade of 123.35, while those in a facto union or legally separated have the lowest median admission grades at 119.40 and 112.50 respectively.
+
+Among the graduates, the marital status with the highest median admission grade is widower, with a significantly high score of 170. Married individuals follow at 130.0. It's worth noting the vast difference between widowers and the rest in this category.
+
+For those enrolled, the divorced group leads with a median grade of 130.20, whereas those in a facto union and legally separated have the lowest median grades, both being under 120.
+
+It appears that, on average, widowers tend to perform exceptionally well in terms of median admission grades when compared to other marital statuses, especially among graduates. The reasons for this might be varied and would require deeper investigation. Also, those who are legally separated or in a facto union generally have the lowest median admission grades across all target outcomes.
+
+## Question 3
+
+Here, we are calculating the median of all curricular units, grouped by gender.
+
+```{r}
+conditional_median <- conditional_median %>%
+  rename_with(~ gsub("Curricular units ", "CU ", .) %>%
+                gsub("1st sem", "1S", .) %>%
+                gsub("2nd sem", "2S", .) %>%
+                gsub(" \\(credited\\)", " Cred", .) %>%
+                gsub(" \\(enrolled\\)", " Enr", .) %>%
+                gsub(" \\(evaluations\\)", " Eval", .) %>%
+                gsub(" \\(approved\\)", " Appr", .) %>%
+                gsub(" \\(grade\\)", " Grade", .) %>%
+                gsub(" \\(without evaluations\\)", " No Eval", .),
+              starts_with("CU"))
+```
+
+```{r, results='asis'}
+kable(conditional_median, caption = "Conditional Median of Curricular Units by Gender")
+```
+#### Legend
+
+Here is a breakdown of the symbols and abbreviations used in the code for table:
+
+- `CU`: Stands for "Curricular Units," denoting the subject or course components.
+  
+- `1S`: Abbreviation for "1st Semester," indicating the period or term of the course.
+
+- `2S`: Abbreviation for "2nd Semester," indicating the period or term of the course.
+
+- `Cred`: Short for "credited," representing the units that have been credited to the student.
+
+- `Enr`: Stands for "enrolled," showing the number of units the student is currently enrolled in.
+
+- `Eval`: Short for "evaluations," showing the number of units for which the student has been evaluated.
+
+- `Appr`: Stands for "approved," indicating the units that the student has passed or been approved for.
+
+- `Grade`: Indicates the grade received by the student for a particular curricular unit.
+
+- `No Eval`: Short for "without evaluations," denoting the units that have not been evaluated.
+
+This table provides a gender-based view on the median values of different curricular units, shedding light on academic performance disparities if any.
+
+## Question 4
+
+We are pivoting the data to a long format and then back to a wide format to calculate median values for curricular units by gender.
+
+```{r}
+# pivot data to long format
+long_format <- dropout |>
+  select(starts_with("Curricular units 1st sem"), Gender) |>
+  pivot_longer(
+                cols = starts_with("Curricular units 1st sem"),
+                names_to = "Units",
+                values_to = "Value")
+
+# pivot data back to wide format w/ Gender as the col
+wide_format <- long_format |> 
+  group_by(Units, Gender) |>
+  summarize(Median_Value = median(Value, na.rm = TRUE), .groups = 'drop') |>
+  pivot_wider(
+              names_from = Gender,
+              values_from = Median_Value)
+```
+
+```{r}
+desired_order <- c(
+  "Curricular units 1st sem (credited)",
+  "Curricular units 1st sem (enrolled)",
+  "Curricular units 1st sem (evaluations)")
+
+wide_format_sorted <- wide_format |>
+  arrange(factor(Units, levels = desired_order))
+```
+
+```{r, results='asis'}
+knitr::kable(wide_format_sorted, caption = "Median Value of Curricular Units by Gender")
+```
+
+For credited curricular units in the first semester, both males and females have a median value of `r wide_format_sorted$Male[wide_format_sorted$Units == "Curricular units 1st sem (credited)"]` and `r wide_format_sorted$Female[wide_format_sorted$Units == "Curricular units 1st sem (credited)"]` respectively, implying no credited units on average.
+
+Both males and females are enrolled in `r wide_format_sorted$Male[wide_format_sorted$Units == "Curricular units 1st sem (enrolled)"]` and `r wide_format_sorted$Female[wide_format_sorted$Units == "Curricular units 1st sem (enrolled)"]` curricular units on average in the first semester.
+
+The evaluations of curricular units in the first semester for males and females are `r wide_format_sorted$Male[wide_format_sorted$Units == "Curricular units 1st sem (evaluations)"]` and `r wide_format_sorted$Female[wide_format_sorted$Units == "Curricular units 1st sem (evaluations)"]` respectively, indicating equal performance.
+
+For approved curricular units in the first semester, males have a median value of `r wide_format_sorted$Male[wide_format_sorted$Units == "Curricular units 1st sem (approved)"]`, while females have a median value of `r wide_format_sorted$Female[wide_format_sorted$Units == "Curricular units 1st sem (approved)"]`, suggesting that females tend to outperform males.
+
+The median grade for curricular units in the first semester for males is `r wide_format_sorted$Male[wide_format_sorted$Units == "Curricular units 1st sem (grade)"]`, and for females, it's `r wide_format_sorted$Female[wide_format_sorted$Units == "Curricular units 1st sem (grade)"]`.
+
+For curricular units in the first semester without evaluations, both genders have a median of `r wide_format_sorted$Male[wide_format_sorted$Units == "Curricular units 1st sem (without evaluations)"]` and `r wide_format_sorted$Female[wide_format_sorted$Units == "Curricular units 1st sem (without evaluations)"]` respectively.
+
+From the data, we can infer that, in terms of curricular units, females tend to have slightly better academic performance, especially in the context of approved units and grades. The differences, however, are not vast and might not be statistically significant, depending on the data distribution and sample size.
