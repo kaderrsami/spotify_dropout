@@ -138,7 +138,7 @@ This table reveals the average liveness and danceability of songs year by year, 
 
 We visualize the yearly mean values of 'liveness' and 'danceability' to understand their temporal evolution.
 
-```{r first}
+```{r first, message=FALSE}
 mean_yearly_values <- spotify |>
   group_by(year) |>
   summarize(
@@ -150,7 +150,7 @@ mean_yearly_values <- spotify |>
               values_to = "mean_value")
 
 ggplot(mean_yearly_values, aes(x = year, y = mean_value, color = faceted_var)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_smooth(method = "lm", aes(linetype = paste(faceted_var, "Trend")), se = FALSE, alpha = 0.7) +
   scale_color_manual(values = c("mean_liveness" = "blue", "mean_danceability" = "green")) +
   scale_linetype_manual(values = c("mean_liveness Trend" = "dotted", "mean_danceability Trend" = "dotted")) +
@@ -306,9 +306,9 @@ We are pivoting the data to a long format and then back to a wide format to calc
 ```{r}
 # pivot data to long format
 long_format <- dropout |>
-  select(starts_with("Curricular units 1st sem"), Gender) |>
+  select(starts_with("Curricular units"), Gender) |>
   pivot_longer(
-                cols = starts_with("Curricular units 1st sem"),
+                cols = starts_with("Curricular units"),
                 names_to = "Units",
                 values_to = "Value")
 
