@@ -6,7 +6,7 @@ format:
 echo: false
 ---
 
-# GitHub URL
+# GitHub URL 
 
 This is my public GitHub URL: <https://github.com/kaderrsami/spotify_dropout>
 
